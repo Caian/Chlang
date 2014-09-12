@@ -1,0 +1,274 @@
+#!/usr/bin/python3
+
+import sys, re, runtime
+
+def dprint(x):
+    pass
+    #print(x)
+
+class srcfile:
+    def __init__(self, filename):
+        self.f = open(filename, 'rt')
+        self.line = 1
+
+    def read_one(self):
+        c = self.f.read(1)
+        if c == '\n':
+            self.line = self.line + 1
+        return c
+
+    def get_line(self):
+        return self.line
+
+    def close(self):
+        self.f.close()
+
+
+def getChurro(stream):
+    while True:
+        c = stream.read_one()
+        if c == '{':
+            break
+        elif c == '':
+            return True
+    dprint('Found a churro!')
+    c = stream.read_one()
+    if c == 'o':
+        dprint('It is a left unfilled churro!')
+        if stream.read_one() != '}':
+            print('Malformed churro!!')
+            return False
+        n = 0
+        while True:
+            c = stream.read_one()
+            if c == '=':
+                n = n+1
+            elif c == '}':
+                break
+            else:
+                print('Malformed churro!!')
+                return False
+        dprint('Its size is ' + str(n) + '!')
+        return ('lu', n)
+    elif c == '*':
+        dprint('It is a left filled churro!')
+        if stream.read_one() != '}':
+            print('Malformed churro!!')
+            return False
+        n = 0
+        while True:
+            c = stream.read_one()
+            if c == '=':
+                n = n+1
+            elif c == '}':
+                break
+            else:
+                print('Malformed churro!!')
+                return False
+        dprint('Its size is ' + str(n) + '!')
+        return ('lf', n)
+    elif c == '=':
+        dprint('It is a right churro!')
+        n = 1
+        while True:
+            c = stream.read_one()
+            if c != '=':
+                break
+            n = n+1
+        dprint('Its size is ' + str(n))
+        if c != '{':
+            print('Malformed churro!!')
+            return False
+        c = stream.read_one()
+        if c == 'o':
+            dprint('It is unfilled!')
+            f = 'ru'
+        elif c == '*':
+            dprint('It is filled!')
+            f = 'rf'
+        else:
+            print('Malformed churro!!')
+            return False
+        if stream.read_one() != '}':
+            print('Malformed churro!!')
+            return False
+        return (f, n)
+    elif c == '{':
+        c = stream.read_one()
+        if stream.read_one() != '}':
+            print('Malformed churro!!')
+            return False
+        if c == 'o':
+            dprint('It is a tiny right unfilled churro!')
+            return ('ru', 0)
+        elif c == '*':
+            dprint('It is a tiny right filled churro!')
+            return ('rf', 0)
+    else:
+        print('Malformed churro!!')
+        return False
+
+
+llvm_counter = 0
+def getreg():
+    global llvm_counter
+    llvm_counter += 1
+    return '%r' + str(llvm_counter)
+
+
+llvm_tlast = ''
+llvm_tcounter = 1
+def gettlabel():
+    global llvm_tcounter
+    llvm_tcounter += 1
+    return 't' + str(llvm_tcounter)
+
+
+llvm_qlast = ''
+llvm_qcounter = 1
+def getqlabel():
+    global llvm_qcounter
+    llvm_qcounter += 1
+    return 'q' + str(llvm_qcounter)
+
+
+def mkinst(c):
+    global llvm_tlast
+    global llvm_qlast
+    ############################################################
+    if c[0] == 'lu':
+        return 'call void @__push(i32 ' + str(c[1]) + ')'
+    ############################################################
+    elif c[0] == 'lf':
+        return 'call void @__push(i32 -' + str(c[1]) + ')'
+    ############################################################
+    elif c[0] == 'ru':
+        if c[1] == 0: # pop A; discard A
+            return 'call i32 @__pop()'
+        elif c[1] == 1: # pop A, B; push (B + A)
+            r1 = getreg()
+            r2 = getreg()
+            r3 = getreg()
+            return r1 + ' = call i32 @__pop()\n' + r2 + ' = call i32 @__pop()\n' + r3 + ' = add i32 ' + r1 + ', ' + r2 + '\ncall void @__push(i32 ' + r3 + ')'
+        elif c[1] == 2: # pop A, B; push (B - A)
+            r1 = getreg()
+            r2 = getreg()
+            r3 = getreg()
+            return r1 + ' = call i32 @__pop()\n' + r2 + ' = call i32 @__pop()\n' + r3 + ' = sub i32 ' + r1 + ', ' + r2 + '\ncall void @__push(i32 ' + r3 + ')'
+        elif c[1] == 3: # pop A; if A = 0, jump to churro after next occurence of {===={o}
+            if llvm_qlast == '':
+                llvm_qlast = getqlabel()
+            llvm_tlast = gettlabel()
+            r1 = getreg()
+            r2 = getreg()
+            return r1 + ' = call i32 @__pop()\n' + r2 + ' = icmp eq i32 ' + r1 + ', 0\nbr i1 ' + r2 + ', label %' + llvm_qlast + ', label %' + llvm_tlast + '\r' + llvm_tlast + ':'
+        elif c[1] == 4: # pop A; if A != 0, jump to churro after last occurence of {==={o}
+            if llvm_tlast == '' or llvm_qlast == '':
+                print('Unmatched {===={o} churro!!')
+                return False
+            r1 = getreg()
+            r2 = getreg()
+            i = r1 + ' = call i32 @__pop()\n' + r2 + ' = icmp ne i32 ' + r1 + ', 0\nbr i1 ' + r2 + ', label %' + llvm_tlast + ', label %' + llvm_qlast + '\r' + llvm_qlast + ':'
+            llvm_qlast = ''
+            return i
+        elif c[1] == 5: # pop A, B; store B in memory location A
+            r1 = getreg()
+            r2 = getreg()
+            return r1 + ' = call i32 @__pop()\n' + r2 + ' = call i32 @__pop()\ncall void @__writem(i32 ' + r1 + ', i32 ' + r2 + ')'
+        elif c[1] == 6: # pop A; push the value in memory location A to stack
+            r1 = getreg()
+            r2 = getreg()
+            return r1 + ' = call i32 @__pop()\n' + r2 + ' = call i32 @__readm(i32 ' + r1 + ')\ncall void @__push(i32 ' + r2 + ')'
+        elif c[1] == 7: # pop A; print A as an integer
+            r1 = getreg()
+            return r1 + ' = call i32 @__pop()\ncall void @__printi(i32 ' + r1 + ')'
+        elif c[1] == 8: # pop A; print A as an ASCII character
+            r1 = getreg()
+            return r1 + ' = call i32 @__pop()\ncall void @__printc(i32 ' + r1 + ')'
+        elif c[1] == 9: # read a single character from stdin and push it to the stack
+            r1 = getreg()
+            return r1 + ' = call i32 @__readc()\ncall void @__push(i32 ' + r1 + ')'
+        elif c[1] == 10: # exit the program
+            return 'ret 0'
+    ############################################################
+    elif c[0] == 'rf':
+        if c[1] == 0: # peek A; discard A
+            return 'call i32 @__peek()'
+        elif c[1] == 1: # peek A, B; push (B + A)
+            r1 = getreg()
+            r2 = getreg()
+            r3 = getreg()
+            return r1 + ' = call i32 @__peek()\n' + r2 + ' = call i32 @__peek()\n' + r3 + ' = add i32 ' + r1 + ', ' + r2 + '\ncall void @__push(i32 ' + r3 + ')'
+        elif c[1] == 2: # peek A, B; push (B - A)
+            r1 = getreg()
+            r2 = getreg()
+            r3 = getreg()
+            return r1 + ' = call i32 @__peek()\n' + r2 + ' = call i32 @__peek()\n' + r3 + ' = sub i32 ' + r1 + ', ' + r2 + '\ncall void @__push(i32 ' + r3 + ')'
+        elif c[1] == 3: # peek A; if A = 0, jump to churro after next occurence of {===={o}
+            if llvm_qlast == '':
+                llvm_qlast = getqlabel()
+            llvm_tlast = gettlabel()
+            r1 = getreg()
+            r2 = getreg()
+            return r1 + ' = call i32 @__peek()\n' + r2 + ' = icmp eq i32 ' + r1 + ', 0\nbr i1 ' + r2 + ', label %' + llvm_qlast + ', label %' + llvm_tlast + '\r' + llvm_tlast + ':'
+        elif c[1] == 4: # peek A; if A != 0, jump to churro after last occurence of {==={o}
+            if llvm_tlast == '' or llvm_qlast == '':
+                print('Unmatched {===={*} churro!!')
+                return False
+            r1 = getreg()
+            r2 = getreg()
+            i = r1 + ' = call i32 @__peek()\n' + r2 + ' = icmp ne i32 ' + r1 + ', 0\nbr i1 ' + r2 + ', label %' + llvm_tlast + ', label %' + llvm_qlast + '\r' + llvm_qlast + ':'
+            llvm_qlast = ''
+            return i
+        elif c[1] == 5: # peek A, B; store B in memory location A
+            r1 = getreg()
+            r2 = getreg()
+            return r1 + ' = call i32 @__peek()\n' + r2 + ' = call i32 @__peek()\ncall void @__writem(i32 ' + r1 + ', i32 ' + r2 + ')'
+        elif c[1] == 6: # peek A; push the value in memory location A to stack
+            r1 = getreg()
+            r2 = getreg()
+            return r1 + ' = call i32 @__peek()\n' + r2 + ' = call i32 @__readm(i32 ' + r1 + ')\ncall void @__push(i32 ' + r2 + ')'
+        elif c[1] == 7: # peek A; print A as an integer
+            r1 = getreg()
+            return r1 + ' = call i32 @__peek()\ncall void @__printi(i32 ' + r1 + ')'
+        elif c[1] == 8: # peek A; print A as an ASCII character
+            r1 = getreg()
+            return r1 + ' = call i32 @__peek()\ncall void @__printc(i32 ' + r1 + ')'
+        elif c[1] == 9: # read a single character from stdin and push it to the stack
+            r1 = getreg()
+            return r1 + ' = call i32 @__readc()\ncall void @__push(i32 ' + r1 + ')'
+        elif c[1] == 10: # exit the program
+            return 'ret 0'
+    #invalid instruction
+    print('Invalid churro:', c)
+    return ''
+
+
+def main():
+    fsrc = srcfile(sys.argv[1])
+    fdest = re.sub(r'\.ch$', '', sys.argv[1]) + '.ll'
+    fdest = open(fdest, 'wt')
+    fdest.write(runtime.llvm_pre1)
+    fdest.write(re.sub(r'^.*/', '', sys.argv[1]))
+    fdest.write(runtime.llvm_pre2)
+    while True:
+        c = getChurro(fsrc)
+        if c == True:
+            break
+        elif c == False:
+            print('Compilation Error at line ' + str(fsrc.get_line()) + '!!')
+            exit()
+        else:
+            i = mkinst(c)
+            if i == False:
+                print('Compilation Error at line ' + str(fsrc.get_line()) + '!!')
+                exit()
+            i = '    ' + i.replace('\n', '\n    ').replace('\r', '\n')
+            fdest.write(i + '\n')
+    fsrc.close()
+    fdest.write(runtime.llvm_post)
+    fdest.close()
+
+
+if __name__=="__main__":
+    main()

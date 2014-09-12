@@ -1,0 +1,58 @@
+#!/usr/bin/python3
+
+"""
+Description: Churro runtime creator script
+Author: Caian Benedicto
+"""
+
+import sys, re, subprocess
+
+fin = sys.argv[1]
+fwoext = re.sub(r'\.cpp$', '', fin)
+fll = fwoext + '.ll'
+fout = fwoext + '.py'
+
+args = ['clang++', '-S', '-emit-llvm', '-std=c++11', '-O0', '-o', fll, fin]
+
+print('Pre-processing source...')
+print(' '.join(args))
+r = subprocess.call(args)
+if r != 0:
+    print('Error running pre-processor!')
+    exit(r)
+
+print('Creating runtime...')
+with open(fll, 'rt') as f:
+	src = f.read()
+
+src = src.replace('\\', '\\\\')
+
+i = src.find('define i32 @main()')
+if i < 0:
+	print("Can't find main!")
+	exit(1)
+
+j = src.find('{', i)
+if j < 0:
+	print("Can't find main's body!")
+	exit(1)
+
+k = src.find('ret i32 0', j)
+if k < 0:
+	print("Can't find main's ret!")
+	exit(1)
+
+l = src.find("ModuleID = '")
+if l < 0:
+	print("Can't find module id!")
+	exit(1)
+m = src.find("'", l+12)
+if m < 0:
+	print("Can't find module id closure!")
+	exit(1)
+
+dest = 'llvm_pre1 = """' + src[:l+12] + '"""\nllvm_pre2 = """' + src[m:j+1] + '\n"""\nllvm_post = """\n' + src[k:] + '"""'
+
+with open(fout, 'wt') as f:
+	f.write(dest)
+print(fout + ' created successfuly.')
