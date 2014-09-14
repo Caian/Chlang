@@ -1,15 +1,30 @@
 #!/usr/bin/python3
 
-import sys, re, runtime
+"""
+Description: Churro frontend + driver
+Author: Caian Benedicto
+"""
+Name='chlang'
+Version = 1.0
+
+import sys, re, argparse, subprocess, tempfile
+import Runtime.debug, Runtime.release
 
 def dprint(x):
     pass
     #print(x)
 
+def eprint(x):
+    sys.stderr.write(x+'\n')
+
 class srcfile:
     def __init__(self, filename):
-        self.f = open(filename, 'rt')
-        self.line = 1
+        try:
+            self.f = open(filename, 'rt')
+            self.line = 1
+        except OSError:
+            eprint("No such file '"+filename+"'!")
+            exit(1)
 
     def read_one(self):
         c = self.f.read(1)
@@ -36,7 +51,7 @@ def getChurro(stream):
     if c == 'o':
         dprint('It is a left unfilled churro!')
         if stream.read_one() != '}':
-            print('Malformed churro!!')
+            eprint('Malformed churro!!')
             return False
         n = 0
         while True:
@@ -46,14 +61,14 @@ def getChurro(stream):
             elif c == '}':
                 break
             else:
-                print('Malformed churro!!')
+                eprint('Malformed churro!!')
                 return False
         dprint('Its size is ' + str(n) + '!')
         return ('lu', n)
     elif c == '*':
         dprint('It is a left filled churro!')
         if stream.read_one() != '}':
-            print('Malformed churro!!')
+            eprint('Malformed churro!!')
             return False
         n = 0
         while True:
@@ -63,7 +78,7 @@ def getChurro(stream):
             elif c == '}':
                 break
             else:
-                print('Malformed churro!!')
+                eprint('Malformed churro!!')
                 return False
         dprint('Its size is ' + str(n) + '!')
         return ('lf', n)
@@ -77,7 +92,7 @@ def getChurro(stream):
             n = n+1
         dprint('Its size is ' + str(n))
         if c != '{':
-            print('Malformed churro!!')
+            eprint('Malformed churro!!')
             return False
         c = stream.read_one()
         if c == 'o':
@@ -87,16 +102,16 @@ def getChurro(stream):
             dprint('It is filled!')
             f = 'rf'
         else:
-            print('Malformed churro!!')
+            eprint('Malformed churro!!')
             return False
         if stream.read_one() != '}':
-            print('Malformed churro!!')
+            eprint('Malformed churro!!')
             return False
         return (f, n)
     elif c == '{':
         c = stream.read_one()
         if stream.read_one() != '}':
-            print('Malformed churro!!')
+            eprint('Malformed churro!!')
             return False
         if c == 'o':
             dprint('It is a tiny right unfilled churro!')
@@ -105,7 +120,7 @@ def getChurro(stream):
             dprint('It is a tiny right filled churro!')
             return ('rf', 0)
     else:
-        print('Malformed churro!!')
+        eprint('Malformed churro!!')
         return False
 
 
@@ -164,7 +179,7 @@ def mkinst(c):
             return r1 + ' = call i32 @__pop()\n' + r2 + ' = icmp eq i32 ' + r1 + ', 0\nbr i1 ' + r2 + ', label %' + llvm_qlast + ', label %' + llvm_tlast + '\r' + llvm_tlast + ':'
         elif c[1] == 4: # pop A; if A != 0, jump to churro after last occurence of {==={o}
             if llvm_tlast == '' or llvm_qlast == '':
-                print('Unmatched {===={o} churro!!')
+                eprint('Unmatched {===={o} churro!!')
                 return False
             r1 = getreg()
             r2 = getreg()
@@ -213,7 +228,7 @@ def mkinst(c):
             return r1 + ' = call i32 @__peek()\n' + r2 + ' = icmp eq i32 ' + r1 + ', 0\nbr i1 ' + r2 + ', label %' + llvm_qlast + ', label %' + llvm_tlast + '\r' + llvm_tlast + ':'
         elif c[1] == 4: # peek A; if A != 0, jump to churro after last occurence of {==={o}
             if llvm_tlast == '' or llvm_qlast == '':
-                print('Unmatched {===={*} churro!!')
+                eprint('Unmatched {===={*} churro!!')
                 return False
             r1 = getreg()
             r2 = getreg()
@@ -240,35 +255,198 @@ def mkinst(c):
         elif c[1] == 10: # exit the program
             return 'ret 0'
     #invalid instruction
-    print('Invalid churro:', c)
+    eprint("Invalid churro '"+c+"'!!")
     return ''
 
-
 def main():
-    fsrc = srcfile(sys.argv[1])
-    fdest = re.sub(r'\.ch$', '', sys.argv[1]) + '.ll'
-    fdest = open(fdest, 'wt')
-    fdest.write(runtime.llvm_pre1)
-    fdest.write(re.sub(r'^.*/', '', sys.argv[1]))
-    fdest.write(runtime.llvm_pre2)
-    while True:
-        c = getChurro(fsrc)
-        if c == True:
-            break
-        elif c == False:
-            print('Compilation Error at line ' + str(fsrc.get_line()) + '!!')
-            exit()
-        else:
-            i = mkinst(c)
-            if i == False:
-                print('Compilation Error at line ' + str(fsrc.get_line()) + '!!')
-                exit()
-            i = '    ' + i.replace('\n', '\n    ').replace('\r', '\n')
-            fdest.write(i + '\n')
-    fsrc.close()
-    fdest.write(runtime.llvm_post)
-    fdest.close()
 
+    # Argument parsing
+    #TODO: Add support for piping
+    #TODO: Add support for .o
+    #TODO: Get rid of this stupid argument parsing library!
+    parser = argparse.ArgumentParser(description='The Churro language frontend for LLVM.')
+    parser.add_argument('-o', metavar='<file>', dest='output', type=str, 
+            default='',
+            help='Output file')
+    parser.add_argument('-S', dest='assembler', action='store_true', 
+            default=False, 
+            help='Only run preprocess and compilation steps')
+    parser.add_argument('-emit-llvm', dest='llvm', action='store_true', 
+            default=False,
+            help='Use the LLVM representation for assembler and object files')
+    parser.add_argument('-save-temps', dest='temps',  action='store_true', 
+            default=False,
+            help='Save intermediate compilation results')
+    parser.add_argument('-v','--version', dest='ver',  action='store_true', 
+            default=False,
+            help='Show compiler version')
+    #TODO: Implement -c
+    #parser.add_argument('-c', action='store_true', default=False,
+    #        help='')
+    parser.add_argument('-g', dest='debug', action='store_true', default=False,
+            help='Generate runtime debug verbose')
+    parser.add_argument('-O', dest='opt', type=int, default=None,
+            help='Optimization level 0-4')
+    parser.add_argument('-x', metavar='<language>', dest='intype', type=str, 
+            default='',
+            help='Treat subsequent input files as having type <language>')
+    parser.add_argument('sources', metavar='<input>', type=str, nargs='?', 
+            help='Source file')
+    lopts = parser.parse_args()
+
+    # Version
+    if lopts.ver:
+        print(Name+' version '+str(Version)+'.0')
+        exit(0)
+
+    # Source listing
+    if lopts.sources == None:
+        eprint('No input files!');
+        exit(1)
+    fin = lopts.sources
+    fmodule = re.sub(r'.*/', '', fin)
+
+    # Source type processing
+    fname = ''
+    stage = -1
+    if lopts.intype == '': # Guess from file type
+        if re.match(r'.*\.ch$', fin) != None:
+            fname = re.sub(r'\.ch$', '', fmodule)
+            stage = 0 # 0 - .ch -> .ll
+        elif re.match(r'.*\.ll$', fin) != None:
+            fname = re.sub(r'\.ll$', '', fmodule)
+            stage = 1 # 1 - .ll -> .s
+        elif re.match(r'.*\.s$', fin) != None:
+            fname = re.sub(r'\.s$', '', fmodule)
+            stage = 2 # 2 = .s  -> binary
+        else:
+            eprint(" file '"+fmodule+"' not recognized!!")
+
+    elif lopts.intype == 'churro':
+        fname = re.sub(r'\.ch$', '', fmodule)
+        stage = 0 # 0 - .ch -> .ll
+    elif lopts.intype == 'ir':
+        fname = re.sub(r'\.ll$', '', fmodule)
+        stage = 1 # 1 - .ll -> .s
+    elif lopts.intype == 'assembly':
+        fname = re.sub(r'\.s$', '', fmodule)
+        stage = 2 # 2 = .s  -> binary
+    else:
+        eprint("Unsupported input format '" + lopts.intype + "'!")
+        exit(1)
+
+    # Output selection
+    fout = ''
+    if lopts.assembler:
+        if lopts.llvm:
+            fout = fname + '.ll'
+        else:
+            fout = fname + '.s'
+    else:
+            fout = fname
+    if lopts.output != '':
+        fout = lopts.output
+
+    # Temporary output (always created for simplicity)
+    with tempfile.TemporaryDirectory() as tempdir:
+
+        # Runtime selection
+        if lopts.debug:
+            llvm_pre1 = Runtime.debug.llvm_pre1
+            llvm_pre2 = Runtime.debug.llvm_pre2
+            llvm_post = Runtime.debug.llvm_post
+        else:
+            llvm_pre1 = Runtime.release.llvm_pre1
+            llvm_pre2 = Runtime.release.llvm_pre2
+            llvm_post = Runtime.release.llvm_post
+
+        # Stage 0 - Parsing + LLVM code generation
+        if stage == 0:
+            code_llvm = '; This code was generated using ' + Name + ' ' + str(Version) + '\n\n'
+            code_llvm += llvm_pre1 + fmodule + llvm_pre2
+            fsrc = srcfile(sys.argv[1])
+            while True:
+                c = getChurro(fsrc)
+                if c == True:
+                    break
+                elif c == False:
+                    eprint('Compilation Error at line ' + str(fsrc.get_line()) + '!')
+                    exit()
+                else:
+                    i = mkinst(c)
+                    if i == False:
+                        eprint('Compilation Error at line ' + str(fsrc.get_line()) + '!')
+                        exit(1)
+                    i = '    ' + i.replace('\n', '\n    ').replace('\r', '\n')
+                    code_llvm += i + '\n'
+            code_llvm += llvm_post
+            fin = tempdir + '/' + fname + '.ll'
+            lopts.intype = 'ir'
+            with open(fin, 'wt') as f:
+                f.write(code_llvm)
+            fsrc.close()
+            if lopts.temps:
+                with open(fname + '.ll', 'wt') as f:
+                    f.write(code_llvm)
+            if lopts.assembler:
+                if lopts.llvm:
+                    if lopts.opt != None:
+                        eprint('Option not used: -O'+str(lopts.opt))
+                    with open(fout, 'wt') as f:
+                        f.write(code_llvm)
+                    exit(0)
+            else:
+                if lopts.llvm:
+                    eprint('Option not used: -emit-llvm')
+        else:
+            if lopts.llvm:
+                eprint('Option not used: -emit-llvm')
+            if lopts.debug:
+                eprint('Option not used: -g')
+
+        # Check for clang...
+        try:
+            args = ['clang++', '--version']
+            out = subprocess.check_output(args, stderr=subprocess.STDOUT)
+            out = str(out, encoding='utf-8')
+            out = re.search(r'clang version [0-9]+\.[0-9]+\.[0-9]+', out)
+            out = out.group(0) if out != None else ''
+            out = re.search(r'[0-9]+\.[0-9]+\.[0-9]+', out)
+            out = out.group(0).split('.') if out != None else ['x','x','x']
+            try:
+                out = [int(x) for x in out]
+            except ValueError:
+                eprint('Cannot determine the version of clang, make it sure that the version is compatible with the code generated')
+            if len(out) != 3:
+                eprint('Cannot determine the version of clang, make it sure that the version is compatible with the code generated')
+            if out[0] < 3 or (out[0] == 3 and out[1] < 5):
+                eprint('This compiler was designed for clang 3.5.0, it appears that you are using an old version of LLVM, this may cause problems')
+        except (subprocess.CalledProcessError, EnvironmentError):
+            eprint('Failed to invoke clang, make sure it is installed correctly!')
+            exit(1)
+
+        # Setup clang
+        pipe = None
+        args = ['clang++']
+        if lopts.opt:
+            args.append('-O'+str(lopts.opt))
+        if lopts.temps:
+            args.append('-save-temps')
+        if lopts.assembler:
+            args.append('-S')
+        if lopts.output:
+            args.append('-o')
+            args.append(lopts.output)
+        if lopts.intype != '':
+            args.append('-x'+lopts.intype)
+        args.append(fin)
+
+        # Call clang
+        try:
+            exit(subprocess.call(args))
+        except EnvironmentError:
+            eprint('Something wrong happened while invoking clang!')
+            exit(1)
 
 if __name__=="__main__":
     main()
