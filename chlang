@@ -1,6 +1,13 @@
 #!/usr/bin/python3
 
-import sys, re, runtime
+"""
+Description: Churro frontend + driver
+Author: Caian Benedicto
+Version: 0.8
+"""
+
+import sys, re, argparse
+import Runtime.debug, Runtime.release
 
 def dprint(x):
     pass
@@ -245,12 +252,100 @@ def mkinst(c):
 
 
 def main():
+    # Argument parsing
+    parser = argparse.ArgumentParser(description='The Churro language frontend for LLVM.')
+    parser.add_argument('-o', metavar='<file>', dest='output', type=str, 
+            default='',
+            help='Output file')
+    parser.add_argument('-S', dest='assembler', action='store_true', 
+            default=False, 
+            help='Only run preprocess and compilation steps')
+    parser.add_argument('-emit-llvm', dest='llvm', action='store_true', 
+            default=False,
+            help='Use the LLVM representation for assembler and object files')
+    parser.add_argument('-save-temps', dest='temps',  action='store_true', 
+            default=False,
+            help='Save intermediate compilation results')
+    #TODO: Implement -c
+    #parser.add_argument('-c', action='store_true', default=False,
+    #        help='Treat subsequent input files as having type')
+    parser.add_argument('-g', dest='debug', action='store_true', default=False,
+            help='Generate runtime debug verbose')
+    parser.add_argument('-O', dest='opt', type=int, default=0,
+            help='Optimization level 0-4')
+    lopts = parser.parse_args()
+
+    print(lopts.o0)
+
+    exit(1)
+    # Source listing
+    if len(lopts.sources) == 0:
+        print('No input files!');
+        exit(1)
+    elif len(lopts.sources) > 1:
+        print('Only one source input is accepted!')
+        exit(1)
+    fin = lopts.sources[0]
+    # Source type processing
+    fname = ''
+    stage = -1
+    if lopts.intype == '': # Guess from file type
+        if re.match(r'.ch$', fin) != None:
+            fname = re.sub(r'(\.ch$)|(.*/)', '', fin)
+            stage = 0 # 0 - .ch -> .ll
+        elif re.match(r'.ll$', fin) != None:
+            fname = re.sub(r'(\.ll$)|(.*/)', '', fin)
+            stage = 1 # 1 - .ll -> .s
+        elif re.match(r'.s$', fin) != None:
+            fname = re.sub(r'(\.s$)|(.*/)', '', fin)
+            stage = 2 # 2 = .s  -> binary
+    elif lopts.intype == 'churro':
+        fname = re.sub(r'(\.ch$)|(.*/)', '', fin)
+        stage = 0 # 0 - .ch -> .ll
+    elif lopts.intype == 'llvm':
+        fname = re.sub(r'(\.ll$)|(.*/)', '', fin)
+        stage = 1 # 1 - .ll -> .s
+    elif lopts.intype == 'source':
+        fname = re.sub(r'(\.s$)|(.*/)', '', fin)
+        stage = 2 # 2 = .s  -> binary
+    else:
+        print("Unsupported input format '" + lopts.intype + "'")
+        exit(1)
+    # Output selection
+    fout = ''
+    if lopts.assembly:
+        genexe = False
+        genllvm = lopts.llvm
+        gennative = not lopts.llvm
+    else:
+        genexe = True
+        if lopts.llvm:
+            print('Option not used: -emit-llvm')
+
+    if lopts.output != '':
+        fout = lopts.output
+    # Runtime selection
+    if lopts.debug:
+        llvm_pre1 = Runtime.debug.llvm_pre1
+        llvm_pre2 = Runtime.debug.llvm_pre2
+        llvm_post = Runtime.debug.llvm_post
+    else:
+        llvm_pre1 = Runtime.release.llvm_pre1
+        llvm_pre2 = Runtime.release.llvm_pre2
+        llvm_post = Runtime.release.llvm_post
     fsrc = srcfile(sys.argv[1])
-    fdest = re.sub(r'\.ch$', '', sys.argv[1]) + '.ll'
+    #TODO: add -o control
+    #TODO: output to string
+    #TODO: add -S control
+    #TODO: add -emit-llvm control
+    #TODO: add optimization control
+    #TODO: add final compilation steps
+    #if lopts.out 
+    fdest = re.sub(r'(\.ch$)|(.*/)', '', sys.argv[1]) + '.ll'
     fdest = open(fdest, 'wt')
-    fdest.write(runtime.llvm_pre1)
+    fdest.write(llvm_pre1)
     fdest.write(re.sub(r'^.*/', '', sys.argv[1]))
-    fdest.write(runtime.llvm_pre2)
+    fdest.write(llvm_pre2)
     while True:
         c = getChurro(fsrc)
         if c == True:
@@ -266,7 +361,7 @@ def main():
             i = '    ' + i.replace('\n', '\n    ').replace('\r', '\n')
             fdest.write(i + '\n')
     fsrc.close()
-    fdest.write(runtime.llvm_post)
+    fdest.write(llvm_post)
     fdest.close()
 
 

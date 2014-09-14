@@ -3,6 +3,7 @@
 """
 Description: Churro runtime creator script
 Author: Caian Benedicto
+Version: 1.0
 """
 
 import sys, re, subprocess
