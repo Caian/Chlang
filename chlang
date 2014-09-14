@@ -4,8 +4,8 @@
 Description: Churro frontend + driver
 Author: Caian Benedicto
 """
-Name='Chlang'
-Version = 0.8
+Name='chlang'
+Version = 1.0
 
 import sys, re, argparse, subprocess, tempfile
 import Runtime.debug, Runtime.release
@@ -277,6 +277,9 @@ def main():
     parser.add_argument('-save-temps', dest='temps',  action='store_true', 
             default=False,
             help='Save intermediate compilation results')
+    parser.add_argument('-v','--version', dest='ver',  action='store_true', 
+            default=False,
+            help='Show compiler version')
     #TODO: Implement -c
     #parser.add_argument('-c', action='store_true', default=False,
     #        help='')
@@ -287,18 +290,20 @@ def main():
     parser.add_argument('-x', metavar='<language>', dest='intype', type=str, 
             default='',
             help='Treat subsequent input files as having type <language>')
-    parser.add_argument('sources', metavar='<input>', type=str, nargs=1, 
+    parser.add_argument('sources', metavar='<input>', type=str, nargs='?', 
             help='Source file')
     lopts = parser.parse_args()
+
+    # Version
+    if lopts.ver:
+        print(Name+' version '+str(Version)+'.0')
+        exit(0)
 
     # Source listing
     if lopts.sources == None:
         eprint('No input files!');
         exit(1)
-    elif len(lopts.sources) > 1:
-        eprint('Only one source input is accepted!')
-        exit(1)
-    fin = lopts.sources[0]
+    fin = lopts.sources
     fmodule = re.sub(r'.*/', '', fin)
 
     # Source type processing
