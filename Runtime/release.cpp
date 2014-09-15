@@ -23,6 +23,11 @@ int __peek()
 	return *stack.rbegin();
 }
 
+int __peekl()
+{
+	return *(stack.rbegin()+1);
+}
+
 void __printi(int x)
 {
 	printf("%d", x);
