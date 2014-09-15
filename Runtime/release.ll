@@ -45,8 +45,8 @@ target triple = "x86_64-unknown-linux-gnu"
 %"struct.std::_Index_tuple.15" = type { i8 }
 %"struct.std::__detail::_Hashtable_base" = type { i8 }
 %"struct.std::__detail::_Hashtable_ebo_helper.2" = type { i8 }
-%"class.__gnu_cxx::new_allocator" = type { i8 }
 %"struct.std::iterator" = type { i8 }
+%"class.__gnu_cxx::new_allocator" = type { i8 }
 %"class.std::move_iterator" = type { i32* }
 %"struct.std::__detail::_Default_ranged_hash" = type { i8 }
 %"struct.std::__detail::_Insert" = type { i8 }
@@ -346,6 +346,35 @@ define i32 @__peek() #0 {
   %2 = call i32* @_ZNKSt16reverse_iteratorIN9__gnu_cxx17__normal_iteratorIPiSt6vectorIiSaIiEEEEEdeEv(%"class.std::reverse_iterator"* %1)
   %3 = load i32* %2
   ret i32 %3
+}
+
+; Function Attrs: uwtable
+define i32 @__peekl() #0 {
+  %1 = alloca %"class.std::reverse_iterator", align 8
+  %2 = alloca %"class.std::reverse_iterator", align 8
+  call void @_ZNSt6vectorIiSaIiEE6rbeginEv(%"class.std::reverse_iterator"* sret %1, %"class.std::vector"* @_ZL5stack) #2
+  call void @_ZNKSt16reverse_iteratorIN9__gnu_cxx17__normal_iteratorIPiSt6vectorIiSaIiEEEEEplEl(%"class.std::reverse_iterator"* sret %2, %"class.std::reverse_iterator"* %1, i64 1)
+  %3 = call i32* @_ZNKSt16reverse_iteratorIN9__gnu_cxx17__normal_iteratorIPiSt6vectorIiSaIiEEEEEdeEv(%"class.std::reverse_iterator"* %2)
+  %4 = load i32* %3
+  ret i32 %4
+}
+
+; Function Attrs: uwtable
+define linkonce_odr void @_ZNKSt16reverse_iteratorIN9__gnu_cxx17__normal_iteratorIPiSt6vectorIiSaIiEEEEEplEl(%"class.std::reverse_iterator"* noalias sret %agg.result, %"class.std::reverse_iterator"* %this, i64 %__n) #0 align 2 {
+  %1 = alloca %"class.std::reverse_iterator"*, align 8
+  %2 = alloca i64, align 8
+  %3 = alloca %"class.__gnu_cxx::__normal_iterator", align 8
+  store %"class.std::reverse_iterator"* %this, %"class.std::reverse_iterator"** %1, align 8
+  store i64 %__n, i64* %2, align 8
+  %4 = load %"class.std::reverse_iterator"** %1
+  %5 = getelementptr inbounds %"class.std::reverse_iterator"* %4, i32 0, i32 0
+  %6 = call i32* @_ZNK9__gnu_cxx17__normal_iteratorIPiSt6vectorIiSaIiEEEmiERKl(%"class.__gnu_cxx::__normal_iterator"* %5, i64* %2)
+  %7 = getelementptr %"class.__gnu_cxx::__normal_iterator"* %3, i32 0, i32 0
+  store i32* %6, i32** %7
+  %8 = getelementptr %"class.__gnu_cxx::__normal_iterator"* %3, i32 0, i32 0
+  %9 = load i32** %8
+  call void @_ZNSt16reverse_iteratorIN9__gnu_cxx17__normal_iteratorIPiSt6vectorIiSaIiEEEEEC2ES6_(%"class.std::reverse_iterator"* %agg.result, i32* %9)
+  ret void
 }
 
 ; Function Attrs: uwtable
@@ -2196,6 +2225,61 @@ define linkonce_odr i64 @_ZNKSt8__detail15_Hash_code_baseIiSt4pairIKiiENS_10_Sel
 }
 
 ; Function Attrs: uwtable
+define linkonce_odr i32* @_ZNK9__gnu_cxx17__normal_iteratorIPiSt6vectorIiSaIiEEEmiERKl(%"class.__gnu_cxx::__normal_iterator"* %this, i64* %__n) #0 align 2 {
+  %1 = alloca %"class.__gnu_cxx::__normal_iterator", align 8
+  %2 = alloca %"class.__gnu_cxx::__normal_iterator"*, align 8
+  %3 = alloca i64*, align 8
+  %4 = alloca i32*, align 8
+  store %"class.__gnu_cxx::__normal_iterator"* %this, %"class.__gnu_cxx::__normal_iterator"** %2, align 8
+  store i64* %__n, i64** %3, align 8
+  %5 = load %"class.__gnu_cxx::__normal_iterator"** %2
+  %6 = getelementptr inbounds %"class.__gnu_cxx::__normal_iterator"* %5, i32 0, i32 0
+  %7 = load i32** %6, align 8
+  %8 = load i64** %3, align 8
+  %9 = load i64* %8, align 8
+  %10 = sub i64 0, %9
+  %11 = getelementptr inbounds i32* %7, i64 %10
+  store i32* %11, i32** %4
+  call void @_ZN9__gnu_cxx17__normal_iteratorIPiSt6vectorIiSaIiEEEC2ERKS1_(%"class.__gnu_cxx::__normal_iterator"* %1, i32** %4)
+  %12 = getelementptr %"class.__gnu_cxx::__normal_iterator"* %1, i32 0, i32 0
+  %13 = load i32** %12
+  ret i32* %13
+}
+
+; Function Attrs: nounwind uwtable
+define linkonce_odr void @_ZNSt16reverse_iteratorIN9__gnu_cxx17__normal_iteratorIPiSt6vectorIiSaIiEEEEEC2ES6_(%"class.std::reverse_iterator"* %this, i32* %__x.coerce) unnamed_addr #1 align 2 {
+  %__x = alloca %"class.__gnu_cxx::__normal_iterator", align 8
+  %1 = alloca %"class.std::reverse_iterator"*, align 8
+  %2 = getelementptr %"class.__gnu_cxx::__normal_iterator"* %__x, i32 0, i32 0
+  store i32* %__x.coerce, i32** %2
+  store %"class.std::reverse_iterator"* %this, %"class.std::reverse_iterator"** %1, align 8
+  %3 = load %"class.std::reverse_iterator"** %1
+  %4 = bitcast %"class.std::reverse_iterator"* %3 to %"struct.std::iterator"*
+  %5 = getelementptr inbounds %"class.std::reverse_iterator"* %3, i32 0, i32 0
+  %6 = bitcast %"class.__gnu_cxx::__normal_iterator"* %5 to i8*
+  %7 = bitcast %"class.__gnu_cxx::__normal_iterator"* %__x to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i64(i8* %6, i8* %7, i64 8, i32 8, i1 false)
+  ret void
+}
+
+; Function Attrs: nounwind
+declare void @llvm.memcpy.p0i8.p0i8.i64(i8* nocapture, i8* nocapture readonly, i64, i32, i1) #2
+
+; Function Attrs: nounwind uwtable
+define linkonce_odr void @_ZN9__gnu_cxx17__normal_iteratorIPiSt6vectorIiSaIiEEEC2ERKS1_(%"class.__gnu_cxx::__normal_iterator"* %this, i32** %__i) unnamed_addr #1 align 2 {
+  %1 = alloca %"class.__gnu_cxx::__normal_iterator"*, align 8
+  %2 = alloca i32**, align 8
+  store %"class.__gnu_cxx::__normal_iterator"* %this, %"class.__gnu_cxx::__normal_iterator"** %1, align 8
+  store i32** %__i, i32*** %2, align 8
+  %3 = load %"class.__gnu_cxx::__normal_iterator"** %1
+  %4 = getelementptr inbounds %"class.__gnu_cxx::__normal_iterator"* %3, i32 0, i32 0
+  %5 = load i32*** %2, align 8
+  %6 = load i32** %5, align 8
+  store i32* %6, i32** %4, align 8
+  ret void
+}
+
+; Function Attrs: uwtable
 define linkonce_odr void @_ZNSt16allocator_traitsISaIiEE7destroyIiEEvRS0_PT_(%"class.std::allocator"* %__a, i32* %__p) #0 align 2 {
   %1 = alloca %"class.std::allocator"*, align 8
   %2 = alloca i32*, align 8
@@ -2230,9 +2314,6 @@ define linkonce_odr void @_ZN9__gnu_cxx13new_allocatorIiE7destroyIiEEvPT_(%"clas
   %4 = load i32** %2, align 8
   ret void
 }
-
-; Function Attrs: nounwind
-declare void @llvm.memcpy.p0i8.p0i8.i64(i8* nocapture, i8* nocapture readonly, i64, i32, i1) #2
 
 ; Function Attrs: nounwind uwtable
 define linkonce_odr %"class.__gnu_cxx::__normal_iterator"* @_ZN9__gnu_cxx17__normal_iteratorIPiSt6vectorIiSaIiEEEmmEv(%"class.__gnu_cxx::__normal_iterator"* %this) #1 align 2 {
@@ -2279,36 +2360,6 @@ define linkonce_odr i32* @_ZNSt6vectorIiSaIiEE3endEv(%"class.std::vector"* %this
   %12 = extractvalue { i8*, i32 } %11, 0
   call void @__clang_call_terminate(i8* %12) #6
   unreachable
-}
-
-; Function Attrs: nounwind uwtable
-define linkonce_odr void @_ZNSt16reverse_iteratorIN9__gnu_cxx17__normal_iteratorIPiSt6vectorIiSaIiEEEEEC2ES6_(%"class.std::reverse_iterator"* %this, i32* %__x.coerce) unnamed_addr #1 align 2 {
-  %__x = alloca %"class.__gnu_cxx::__normal_iterator", align 8
-  %1 = alloca %"class.std::reverse_iterator"*, align 8
-  %2 = getelementptr %"class.__gnu_cxx::__normal_iterator"* %__x, i32 0, i32 0
-  store i32* %__x.coerce, i32** %2
-  store %"class.std::reverse_iterator"* %this, %"class.std::reverse_iterator"** %1, align 8
-  %3 = load %"class.std::reverse_iterator"** %1
-  %4 = bitcast %"class.std::reverse_iterator"* %3 to %"struct.std::iterator"*
-  %5 = getelementptr inbounds %"class.std::reverse_iterator"* %3, i32 0, i32 0
-  %6 = bitcast %"class.__gnu_cxx::__normal_iterator"* %5 to i8*
-  %7 = bitcast %"class.__gnu_cxx::__normal_iterator"* %__x to i8*
-  call void @llvm.memcpy.p0i8.p0i8.i64(i8* %6, i8* %7, i64 8, i32 8, i1 false)
-  ret void
-}
-
-; Function Attrs: nounwind uwtable
-define linkonce_odr void @_ZN9__gnu_cxx17__normal_iteratorIPiSt6vectorIiSaIiEEEC2ERKS1_(%"class.__gnu_cxx::__normal_iterator"* %this, i32** %__i) unnamed_addr #1 align 2 {
-  %1 = alloca %"class.__gnu_cxx::__normal_iterator"*, align 8
-  %2 = alloca i32**, align 8
-  store %"class.__gnu_cxx::__normal_iterator"* %this, %"class.__gnu_cxx::__normal_iterator"** %1, align 8
-  store i32** %__i, i32*** %2, align 8
-  %3 = load %"class.__gnu_cxx::__normal_iterator"** %1
-  %4 = getelementptr inbounds %"class.__gnu_cxx::__normal_iterator"* %3, i32 0, i32 0
-  %5 = load i32*** %2, align 8
-  %6 = load i32** %5, align 8
-  store i32* %6, i32** %4, align 8
-  ret void
 }
 
 ; Function Attrs: uwtable

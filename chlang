@@ -5,7 +5,7 @@ Description: Churro frontend + driver
 Author: Caian Benedicto
 """
 Name='chlang'
-Version = 1.1
+Version = '1.0.3'
 
 import sys, re, argparse, subprocess, tempfile
 import Runtime.debug, Runtime.release
@@ -206,12 +206,12 @@ def mkinst(c):
             r1 = getreg()
             r2 = getreg()
             r3 = getreg()
-            return r1 + ' = call i32 @__peek()\n' + r2 + ' = call i32 @__peek()\n' + r3 + ' = add i32 ' + r1 + ', ' + r2 + '\ncall void @__push(i32 ' + r3 + ')'
+            return r1 + ' = call i32 @__peek()\n' + r2 + ' = call i32 @__peekl()\n' + r3 + ' = add i32 ' + r1 + ', ' + r2 + '\ncall void @__push(i32 ' + r3 + ')'
         elif c[1] == 2: # peek A, B; push (B - A)
             r1 = getreg()
             r2 = getreg()
             r3 = getreg()
-            return r1 + ' = call i32 @__peek()\n' + r2 + ' = call i32 @__peek()\n' + r3 + ' = sub i32 ' + r1 + ', ' + r2 + '\ncall void @__push(i32 ' + r3 + ')'
+            return r1 + ' = call i32 @__peek()\n' + r2 + ' = call i32 @__peekl()\n' + r3 + ' = sub i32 ' + r1 + ', ' + r2 + '\ncall void @__push(i32 ' + r3 + ')'
         elif c[1] == 3: # peek A; if A = 0, jump to churro after next occurence of {===={o}
             t = getlabel()
             q = getlabel()
@@ -234,7 +234,7 @@ def mkinst(c):
         elif c[1] == 5: # peek A, B; store B in memory location A
             r1 = getreg()
             r2 = getreg()
-            return r1 + ' = call i32 @__peek()\n' + r2 + ' = call i32 @__peek()\ncall void @__writem(i32 ' + r1 + ', i32 ' + r2 + ')'
+            return r1 + ' = call i32 @__peek()\n' + r2 + ' = call i32 @__peekl()\ncall void @__writem(i32 ' + r1 + ', i32 ' + r2 + ')'
         elif c[1] == 6: # peek A; push the value in memory location A to stack
             r1 = getreg()
             r2 = getreg()
@@ -276,6 +276,12 @@ def main():
     parser.add_argument('-v','--version', dest='ver',  action='store_true', 
             default=False,
             help='Show compiler version')
+    parser.add_argument('-clang-bin', metavar='<file>', dest='clangb', type=str, 
+            default='clang++',
+            help='Clang++ binary override')
+    parser.add_argument('-not-picky', dest='notpicky', action='store_true', 
+            default=False, 
+            help='Do not check for clang version')
     #TODO: Implement -c
     #parser.add_argument('-c', action='store_true', default=False,
     #        help='')
@@ -292,7 +298,7 @@ def main():
 
     # Version
     if lopts.ver:
-        print(Name+' version '+str(Version)+'.0')
+        print(Name+' version '+Version)
         exit(0)
 
     # Source listing
@@ -402,28 +408,29 @@ def main():
 
         # Check for clang...
         try:
-            args = ['clang++', '--version']
+            args = [lopts.clangb, '--version']
             out = subprocess.check_output(args, stderr=subprocess.STDOUT)
-            out = str(out, encoding='utf-8')
-            out = re.search(r'clang version [0-9]+\.[0-9]+', out)
-            out = out.group(0) if out != None else ''
-            out = re.search(r'[0-9]+\.[0-9]+', out)
-            out = out.group(0).split('.') if out != None else ['x','x']
-            try:
-                out = [int(x) for x in out]
-                if len(out) != 2:
+            if not lopts.notpicky:
+                out = str(out, encoding='utf-8')
+                out = re.search(r'clang version [0-9]+\.[0-9]+', out)
+                out = out.group(0) if out != None else ''
+                out = re.search(r'[0-9]+\.[0-9]+', out)
+                out = out.group(0).split('.') if out != None else ['x','x']
+                try:
+                    out = [int(x) for x in out]
+                    if len(out) != 2:
+                        eprint('Cannot determine the version of clang, make it sure that the version is compatible with the code generated')
+                    if out[0] < 3 or (out[0] == 3 and out[1] < 5):
+                        eprint('This compiler was designed for clang 3.5.0, it appears that you are using an old version of LLVM, this may cause problems')
+                except (ValueError, TypeError):
                     eprint('Cannot determine the version of clang, make it sure that the version is compatible with the code generated')
-                if out[0] < 3 or (out[0] == 3 and out[1] < 5):
-                    eprint('This compiler was designed for clang 3.5.0, it appears that you are using an old version of LLVM, this may cause problems')
-            except (ValueError, TypeError):
-                eprint('Cannot determine the version of clang, make it sure that the version is compatible with the code generated')
         except (subprocess.CalledProcessError, EnvironmentError):
             eprint('Failed to invoke clang, make sure it is installed correctly!')
             exit(1)
 
         # Setup clang
         pipe = None
-        args = ['clang++']
+        args = [lopts.clangb]
         if lopts.opt:
             args.append('-O'+str(lopts.opt))
         if lopts.temps:

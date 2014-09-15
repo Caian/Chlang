@@ -29,6 +29,13 @@ int __peek()
 	return x;
 }
 
+int __peekl()
+{
+	int x = *(stack.rbegin()+1);
+	fprintf(stderr, "DEBUG: <%d> \n", x);
+	return x;
+}
+
 void __printi(int x)
 {
 	fprintf(stderr, "DEBUG: $d%d \n", x);
@@ -38,14 +45,14 @@ void __printi(int x)
 void __printc(int x)
 {
 	fprintf(stderr, "DEBUG: $c%d \n", x);
-	fprintf(stderr, "%c", (char)x);
+	printf("%c", (char)x);
 }
 
 int __readc()
 {
 	fprintf(stderr, "DEBUG: Waiting for input...\n");
 	int x = getchar();
-	printf("DEBUG: #%d\n", x);
+	fprintf(stderr, "DEBUG: #%d\n", x);
 	return x;
 }
 
